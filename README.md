@@ -10,4 +10,4 @@ This module provides a REST-API info for TelegramBot API (https://core.telegram.
 1. Send and receive messages
 2. Send and receive pictures
 3. Send and receive audios
-4. Send an receive videos
+4. Send and receive videos
