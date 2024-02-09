@@ -7,6 +7,7 @@ through REST API.s
 import sys
 import logging
 import os
+import time
 import toml
 import requests
 import wget
@@ -39,12 +40,12 @@ class TelegramBot:
     updates and messages from the Telegram API.
     '''
     def __init__(self, config: dict):
+        logger.info('Starting TelegramBot')
         self.api_key = config["API_TELEGRAMBOT_KEY"]
         self.url = f'https://api.telegram.org/bot{self.api_key}/'
         self.message_info = {}
-
-        if self._get_updates():
-            self._check_message_type()
+        self.last_message_id = 0
+        self.chat_id = None
 
     def _get_updates(self) -> bool:
         '''
@@ -61,7 +62,19 @@ class TelegramBot:
         self.message_info = data['result'][-1]['message']
         return True
 
-    def _check_message_type(self):
+    def check_new_message(self) -> bool:
+        '''
+        Method to check if last message in queue is a new one
+        '''
+        if self._get_updates():
+            message_id = self.message_info['message_id']
+            if message_id != self.last_message_id:
+                # Update message ID attribute
+                self.last_message_id = message_id
+                return True
+        return False
+
+    def check_message_type(self):
         '''
         Check the incoming message type:
             - text
@@ -236,7 +249,11 @@ def main():
     '''
 
     data = read_config_file(sys.argv[1])
-    TelegramBot(data)
+    telegrambot = TelegramBot(data)
+    while True:
+        if telegrambot.check_new_message():
+            telegrambot.check_message_type()
+        time.sleep(1)
 
 
 if __name__ == '__main__':
