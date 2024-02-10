@@ -22,7 +22,6 @@ jobs:
     - name: Ruff linter
       run: |
         ruff check .
-        ruff fix .
     - name: Test with pytest and codecov
       run: |
         export PYTHONPATH=src/
