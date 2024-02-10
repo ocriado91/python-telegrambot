@@ -6,7 +6,7 @@ through REST API.s
 
 import logging
 import os
-import toml
+import tomli
 import requests
 import wget
 
@@ -24,12 +24,10 @@ def read_config_file(config_file: str) -> dict:
     """
 
     try:
-        logger.info("Trying to open %s", config_file)
-        with open(config_file, encoding="utf-8") as config_file_obj:
-            data = toml.load(config_file_obj)
-        return data
+        with open(config_file, 'rb') as config_reader:
+            return tomli.load(config_reader)
     except FileNotFoundError:
-        logger.error("Configuration file %s not found", config_file)
+        logger.error('Configuration file %s not found', config_file)
         return {}
 
 
