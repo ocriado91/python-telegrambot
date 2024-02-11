@@ -1,5 +1,4 @@
 [![TelegramBot Workflow](https://github.com/ocriado91/python-telegrambot/actions/workflows/python.yaml/badge.svg)](https://github.com/ocriado91/python-telegrambot/actions/workflows/python.yaml)
-
 [![codecov](https://codecov.io/gh/ocriado91/python-telegrambot/graph/badge.svg?token=BM1U5IQKZS)](https://codecov.io/gh/ocriado91/python-telegrambot)
 
 <p align="center">
