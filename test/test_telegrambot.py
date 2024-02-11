@@ -3,7 +3,12 @@
 Unit Testing for TelegramBot
 """
 
+import os
+import pytest
+import urllib
+
 import telegrambot
+
 
 
 def test_read_valid_config():
@@ -166,8 +171,51 @@ def test_telegrambot_check_video_message(requests_mock):
     requests_mock.get(f"{bot.url}getUpdates", json=mock_response)
     requests_mock.get(f"{bot.url}getFile", json={"text": "Hi"})
     requests_mock.get(f"{bot.url}sendVideo", json={"text": "Hi"})
+
+    # Create download folder if doesn't exist
+    if not os.path.isdir('download/'):
+        os.mkdir('download/')
     bot.check_new_message()
     assert bot.check_message_type()
+
+
+def test_telegrambot_get_file(requests_mock):
+    """
+    Test to check getFile method behaviour
+    """
+
+    data = telegrambot.read_config_file("test/config.toml")
+    bot = telegrambot.TelegramBot(data)
+
+    mock_response = {
+        "ok": 200,
+        "result": {
+            "file_path": "download/"
+        }
+    }
+    requests_mock.get(f"{bot.url}getFile", json=mock_response)
+
+    with pytest.raises(urllib.error.HTTPError):
+        bot._download_file(file_id=1234)
+
+
+def test_telegrambot_get_file_wrong_folder(requests_mock):
+    """
+    Test to check getFile method behaviour with a wrong folder path
+    """
+
+    data = telegrambot.read_config_file("test/config.toml")
+    bot = telegrambot.TelegramBot(data)
+
+    mock_response = {
+        "ok": 200,
+        "result": {
+            "file_path": "download/"
+        }
+    }
+    requests_mock.get(f"{bot.url}getFile", json=mock_response)
+
+    bot._download_file(file_id=1234, download_path="wrong_download/")
 
 
 def test_telegrambot_check_invalid_message(requests_mock):

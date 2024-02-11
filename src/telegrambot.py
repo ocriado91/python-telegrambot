@@ -217,5 +217,3 @@ class TelegramBot:
         download_url = download_url + file_path
         logger.info("Trying to download %s", download_url)
         wget.download(download_url, download_path)
-        logger.info(download_url)
-        return True
