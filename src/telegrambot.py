@@ -1,7 +1,7 @@
 #!/bin/env/python3
 """
 This python module provides a interface between the users and our TelegramBot
-through REST API.s
+through REST API.
 """
 
 import logging
