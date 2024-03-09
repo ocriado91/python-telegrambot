@@ -39,7 +39,7 @@ class TelegramBot:
 
     def __init__(self, config: dict):
         logger.info("Starting TelegramBot")
-        self.api_key = config["API_TELEGRAMBOT_KEY"]
+        self.api_key = config["API_KEY"]
         self.url = f"https://api.telegram.org/bot{self.api_key}/"
         self.message_info = {}
         self.last_message_id = 0
