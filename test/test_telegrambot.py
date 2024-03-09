@@ -17,7 +17,7 @@ def test_read_valid_config():
     """
 
     data = telegrambot.read_config_file("test/config.toml")
-    assert data["API_TELEGRAMBOT_KEY"] == "TEST_API_KEY"
+    assert data["API_KEY"] == "TEST_API_KEY"
 
 
 def test_read_invalid_config():
