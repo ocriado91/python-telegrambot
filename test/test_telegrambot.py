@@ -10,7 +10,6 @@ import urllib
 import telegrambot
 
 
-
 def test_read_valid_config():
     """
     This test try to read a valid configuration file
@@ -53,7 +52,7 @@ def test_telegrambot_check_new_message(requests_mock):
     mock_response = {
         "result": [{"message": {"message_id": 80, "chat": {"id": 12345}}}]
     }
-    requests_mock.get(f"{bot.url}getUpdates", json=mock_response)
+    requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
     assert bot.check_new_message()
 
 
@@ -66,8 +65,24 @@ def test_telegrambot_check_not_update(requests_mock):
     bot = telegrambot.TelegramBot(data)
 
     mock_response = {}
-    requests_mock.get(f"{bot.url}getUpdates", json=mock_response)
+    requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
     assert not bot.check_new_message()
+
+def test_send_message(requests_mock):
+    """
+    Check a message sending.
+    """
+
+    data = telegrambot.read_config_file("test/config.toml")
+    bot = telegrambot.TelegramBot(data)
+
+    mock_response = {
+        "ok": True,
+        "error_code": 200
+    }
+    requests_mock.post(f"{bot.url}sendMessage", json=mock_response)
+
+    assert 200 == bot.send_message("Hi")
 
 
 def test_telegrambot_check_text_message(requests_mock):
@@ -89,11 +104,26 @@ def test_telegrambot_check_text_message(requests_mock):
             }
         ]
     }
-    requests_mock.get(f"{bot.url}getUpdates", json=mock_response)
-    requests_mock.get(f"{bot.url}sendMessage", json={"text": "Hi"})
+    requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
+    requests_mock.post(f"{bot.url}sendMessage", json={"text": "Hi"})
     bot.check_new_message()
     assert bot.check_message_type()
 
+def test_send_photo(requests_mock):
+    """
+    Check a photo sending.
+    """
+
+    data = telegrambot.read_config_file("test/config.toml")
+    bot = telegrambot.TelegramBot(data)
+
+    mock_response = {
+        "ok": True,
+        "error_code": 200
+    }
+    requests_mock.post(f"{bot.url}sendPhoto", json=mock_response)
+
+    assert 200 == bot.send_photo("mock_photo")
 
 def test_telegrambot_check_photo_message(requests_mock):
     """
@@ -115,12 +145,27 @@ def test_telegrambot_check_photo_message(requests_mock):
             }
         ]
     }
-    requests_mock.get(f"{bot.url}getUpdates", json=mock_response)
-    requests_mock.get(f"{bot.url}getFile", json={"text": "Hi"})
-    requests_mock.get(f"{bot.url}sendPhoto", json={"text": "Hi"})
+    requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
+    requests_mock.post(f"{bot.url}getFile", json={"text": "Hi"})
+    requests_mock.post(f"{bot.url}sendPhoto", json={"text": "Hi"})
     bot.check_new_message()
     assert bot.check_message_type()
 
+def test_send_audio(requests_mock):
+    """
+    Check a audio sending.
+    """
+
+    data = telegrambot.read_config_file("test/config.toml")
+    bot = telegrambot.TelegramBot(data)
+
+    mock_response = {
+        "ok": True,
+        "error_code": 200
+    }
+    requests_mock.post(f"{bot.url}sendAudio", json=mock_response)
+
+    assert 200 == bot.send_audio("mock_audio")
 
 def test_telegrambot_check_audio_message(requests_mock):
     """
@@ -141,12 +186,27 @@ def test_telegrambot_check_audio_message(requests_mock):
             }
         ]
     }
-    requests_mock.get(f"{bot.url}getUpdates", json=mock_response)
-    requests_mock.get(f"{bot.url}getFile", json={"text": "Hi"})
-    requests_mock.get(f"{bot.url}sendAudio", json={"text": "Hi"})
+    requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
+    requests_mock.post(f"{bot.url}getFile", json={"text": "Hi"})
+    requests_mock.post(f"{bot.url}sendAudio", json={"text": "Hi"})
     bot.check_new_message()
     assert bot.check_message_type()
 
+def test_send_video(requests_mock):
+    """
+    Check a message sending.
+    """
+
+    data = telegrambot.read_config_file("test/config.toml")
+    bot = telegrambot.TelegramBot(data)
+
+    mock_response = {
+        "ok": True,
+        "error_code": 200
+    }
+    requests_mock.post(f"{bot.url}sendVideo", json=mock_response)
+
+    assert 200 == bot.send_video("mock_video")
 
 def test_telegrambot_check_video_message(requests_mock):
     """
@@ -168,9 +228,9 @@ def test_telegrambot_check_video_message(requests_mock):
             }
         ]
     }
-    requests_mock.get(f"{bot.url}getUpdates", json=mock_response)
-    requests_mock.get(f"{bot.url}getFile", json={"text": "Hi"})
-    requests_mock.get(f"{bot.url}sendVideo", json={"text": "Hi"})
+    requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
+    requests_mock.post(f"{bot.url}getFile", json={"text": "Hi"})
+    requests_mock.post(f"{bot.url}sendVideo", json={"text": "Hi"})
 
     # Create download folder if doesn't exist
     if not os.path.isdir('download/'):
@@ -193,7 +253,7 @@ def test_telegrambot_get_file(requests_mock):
             "file_path": "download/"
         }
     }
-    requests_mock.get(f"{bot.url}getFile", json=mock_response)
+    requests_mock.post(f"{bot.url}getFile", json=mock_response)
 
     with pytest.raises(urllib.error.HTTPError):
         bot._download_file(file_id=1234)
@@ -204,8 +264,11 @@ def test_telegrambot_get_file_wrong_folder(requests_mock):
     Test to check getFile method behaviour with a wrong folder path
     """
 
-    data = telegrambot.read_config_file("test/config.toml")
+    data = {'API_KEY': 'valid_api_key'}
     bot = telegrambot.TelegramBot(data)
+
+    file_id = "123456789"
+    download_path = "downloads/"
 
     mock_response = {
         "ok": 200,
@@ -213,9 +276,9 @@ def test_telegrambot_get_file_wrong_folder(requests_mock):
             "file_path": "download/"
         }
     }
-    requests_mock.get(f"{bot.url}getFile", json=mock_response)
+    requests_mock.post(f"{bot.url}getFile", json=mock_response)
 
-    bot._download_file(file_id=1234, download_path="wrong_download/")
+    assert bot._download_file(file_id, download_path)
 
 
 def test_telegrambot_check_invalid_message(requests_mock):
@@ -229,6 +292,6 @@ def test_telegrambot_check_invalid_message(requests_mock):
     mock_response = {
         "result": [{"message": {"message_id": 80, "chat": {"id": 12345}}}]
     }
-    requests_mock.get(f"{bot.url}getUpdates", json=mock_response)
+    requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
     bot.check_new_message()
     assert not bot.check_message_type()
