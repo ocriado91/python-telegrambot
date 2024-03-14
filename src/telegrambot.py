@@ -109,29 +109,37 @@ class TelegramBot:
         if "text" in keys:
             return self.get_message()
         if "photo" in keys:
-            return self.get_photo()
+            return self.get_file(label="photo")
         if "voice" in keys:
-            return self.get_audio()
+            return self.get_file(label="voice")
         if "video" in keys:
-            return self.get_video()
+            return self.get_file(label="video")
         logger.error("None accepted type detected")
         return None
 
-    def get_message(self) -> str:
+    def get_message(self) -> dict:
         """
         Retrieve the latest TelegramBot message.
 
         Returns:
-            str: The text of the latest message.
+            - dict: A dictionary with the message text
+            as value.
 
         """
         message = self.message_info["text"]
         logger.info("Detected text message: %s", message)
-        return message
+        return {"text": message}
 
-    def send_message(self, message: str):
+    def send_message(self, message: str) -> bool:
         """
         Send a message (txt)
+
+        Parameters:
+            - message (string): Desired message to be sent.
+
+        Returns:
+            - boolean: A boolean if sendAudio request to Telegram Bot API
+            has been successfully sent or not.
         """
         url = self.url + "sendMessage"
         logger.info("Sending message %s to %s", message, self.chat_id)
@@ -140,28 +148,54 @@ class TelegramBot:
             url, timeout=10, data={"chat_id": self.chat_id, "text": message}
         ).json()
 
-        return response["error_code"]
+        return response["ok"]
 
-    def get_photo(self, download_file: bool = True) -> tuple:
+    def get_file(self,
+                 label: str,
+                 download_path: str = "download/",
+                 download_file: bool = False,) -> dict:
         """
         Retrieve the latest picture sent to the bot.
 
         Parameters:
-            - download_file (bool, optional): Wheter to download the photo
-            file or not. Defaults to True.
+            - download_path (str): Path to download file (if download_file
+            flag is enabled)
+            - download_file (bool, optional): Wheter to download the
+            file or not. Defaults to False.
 
         Returns:
-            - tuple: A tuple containing the file ID of the photo and its
-            caption
+            - dictionary: A dictionary {type, (file, [caption])] where:
+                * type: Type of incoming file: photo, audio or video
+                * file: file_id of TelegramBot according with API
+                * caption: Optional field. Caption related with the
+                incoming file
         """
 
-        caption = self.message_info["caption"]
-        photo_info = self.message_info["photo"][-1]
-        file_id = photo_info["file_id"]
-        logger.info("Detected picture: %s with caption %s", file_id, caption)
+        # Check if there are multiple fields into incoming
+        # message info previously returned as list, or
+        # only have a single field, returned as dictionary.
+        if isinstance(self.message_info[label], list):
+            file_info = self.message_info[label][-1]
+        else:
+            file_info = self.message_info[label]
+        file_id = file_info["file_id"]
+        logger.info("Detected %s file: %s", label, file_id)
+
+        # Whether if selected, try to download file into
+        # configured folder
         if download_file:
-            self._download_file(file_id)
-        return file_id, caption
+            download_flag = self._download_file(file_id, download_path)
+            if not download_flag:
+                return {}
+
+        # Extract optional caption field from incoming
+        # message and return the file and caption
+        # tuple
+        if "caption" in self.message_info.keys():
+            caption = self.message_info["caption"]
+            return {label: (file_id, caption)}
+
+        return {label: (file_id)}
 
     def send_photo(self, file_id: str):
         """
@@ -170,6 +204,10 @@ class TelegramBot:
 
         Parameters:
             - file_id (str): The file ID of the photo to be sent.
+
+        Returns:
+            - boolean: A boolean if sendAudio request to Telegram Bot API
+            has been successfully sent or not.
         """
 
         url = self.url + "sendPhoto"
@@ -181,35 +219,19 @@ class TelegramBot:
             url, timeout=10, data={"chat_id": self.chat_id, "photo": file_id}
         ).json()
 
-        return response["error_code"]
+        return response["ok"]
 
-    def get_audio(self, download_file: bool = True):
-        """
-        Retrieve the latest audio file sent to the bot.
-
-        Parameters:
-            - download_file (bool, optional): Whether to download the audio file
-            or not. Defaults to True.
-
-        Returns:
-            str: The file ID of the audio file
-        """
-
-        audio_info = self.message_info["voice"]
-        file_id = audio_info["file_id"]
-        logger.info("Detected audio file: %s", file_id)
-
-        if download_file:
-            self._download_file(file_id)
-        return file_id
-
-    def send_audio(self, file_id: str):
+    def send_audio(self, file_id: str) -> bool:
         """
         Send and audio file to the specified chat ID using the Telegram Bot
         API.
 
         Parameters:
             -   file_id (str): The file ID of the audio to be sent.
+
+        Returns:
+            - boolean: A boolean if sendAudio request to Telegram Bot API
+            has been successfully sent or not.
         """
 
         url = self.url + "sendAudio"
@@ -221,20 +243,7 @@ class TelegramBot:
             url, timeout=10, data={"chat_id": self.chat_id, "audio": file_id}
         ).json()
 
-        return response["error_code"]
-
-    def get_video(self, download_file: bool = True):
-        """
-        Retrieve the latest video file sent to the bot
-        """
-        caption = self.message_info["caption"]
-        video_info = self.message_info["video"]
-        file_id = video_info["file_id"]
-        logger.info("Detected video file: %s", file_id)
-
-        if download_file:
-            self._download_file(file_id)
-        return file_id, caption
+        return response["ok"]
 
     def send_video(self, file_id: str):
         """
@@ -250,7 +259,7 @@ class TelegramBot:
             url, timeout=10, data={"chat_id": self.chat_id, "video": file_id}
         ).json()
 
-        return response["error_code"]
+        return response["ok"]
 
     def _download_file(
         self, file_id: str, download_path: str = "download/"
@@ -262,7 +271,7 @@ class TelegramBot:
         # Check if download folder exists
         if not os.path.isdir(download_path):
             logger.error("%s folder not found", download_path)
-            return True
+            return False
 
         # Build URL according with Telegram Bot API
         url = self.url + "getFile"
@@ -273,7 +282,8 @@ class TelegramBot:
         logger.debug("Response %s", response)
 
         # Check successfully response
-        if "ok" not in response.keys():
+        if not response["ok"]:
+            logger.error("ERROR download file!")
             return False
         logger.debug("Download file response: %s", response)
 
