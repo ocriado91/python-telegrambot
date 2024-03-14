@@ -21,6 +21,14 @@ where:
 * METHOD_NAME: According with the desired action to applly, we need to call to
 the correspond method.
 
+## Setup
+
+````
+pip install -e .
+python3 -c "import telegrambot; print("telegrambot.version")"
+````
+
+
 ## Actions
 In this project, we support the following actions:
 1. Send and receive messages
