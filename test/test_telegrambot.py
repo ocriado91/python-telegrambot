@@ -4,8 +4,6 @@ Unit Testing for TelegramBot
 """
 
 import os
-import pytest
-import urllib
 from unittest.mock import patch
 
 import telegrambot
@@ -366,6 +364,7 @@ def test_telegrambot_check_video_message_with_download(requests_mock):
         assert "video" in result.keys()
         assert expected_file == result["video"][0]
         assert expected_caption == result["video"][1]
+        assert mock_download.assert_awaited_once()
 
 def test_telegrambot_check_video_message_with_download_error(requests_mock):
     """
