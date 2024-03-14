@@ -327,6 +327,11 @@ def test_telegrambot_check_video_message_with_download(requests_mock):
     expected_file = "hi.mp4"
     expected_caption = "video caption"
 
+    target_folder = "download/"
+    # Create download folder in case of it doesn't exist
+    if not os.path.isdir(target_folder):
+        os.mkdir(target_folder)
+
     # Mocking response of /getUpdates post request with
     # expected values previously defined
     mock_response = {
@@ -364,7 +369,7 @@ def test_telegrambot_check_video_message_with_download(requests_mock):
         assert "video" in result.keys()
         assert expected_file == result["video"][0]
         assert expected_caption == result["video"][1]
-        assert mock_download.assert_awaited_once()
+        mock_download.assert_called_once()
 
 def test_telegrambot_check_video_message_with_download_error(requests_mock):
     """
