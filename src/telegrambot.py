@@ -3,6 +3,7 @@
 This python module provides a interface between the users and our TelegramBot
 """
 
+from datetime import datetime, timezone
 import logging
 import os
 import tomli
@@ -60,9 +61,14 @@ class TelegramBot:
         self.last_message_id = 0
         self.chat_id = None
 
-    def _get_updates(self) -> bool:
+    def _get_updates(self,
+                     reference_time: datetime) -> bool:
         """
         Retrieve TelegramBot updates into JSON format
+
+        Parameters:
+            - reference_time (datetime): A reference
+            time to compare against the message datetime.
 
         Returns:
             bool: True if updates are successfully retrieved, False otherwise.
@@ -71,21 +77,34 @@ class TelegramBot:
         method_url = self.url + "getUpdates"
         data = requests.post(method_url, timeout=10, data={"offset": -1}).json()
         if "result" not in data.keys():
-            logger.error("None incoming update")
             return False
+
         self.chat_id = data["result"][-1]["message"]["chat"]["id"]
         self.message_info = data["result"][-1]["message"]
+
+        # Extract message datetime and compare against reference time to
+        # detect old messages
+        date_info = datetime.fromtimestamp(int(self.message_info["date"]),
+                                           timezone.utc)
+        if date_info < reference_time:
+            return False
+
         return True
 
-    def check_new_message(self) -> bool:
+    def check_new_message(self,
+                          reference_time: datetime) -> bool:
         """
         Method to check if last message in queue is a new one
+
+        Parameters:
+            - reference_time (datetime): A reference time
+            to compare against the message datetime.
 
         Returns:
             bool: True if the last message is new, False otherwise.
         """
 
-        if self._get_updates():
+        if self._get_updates(reference_time):
             message_id = self.message_info["message_id"]
             if message_id != self.last_message_id:
                 # Update message ID attribute
@@ -105,7 +124,6 @@ class TelegramBot:
         """
         logger.debug("Message info %s", self.message_info)
         keys = self.message_info.keys()
-        logger.info("Processing message type: %s", keys)
         if "text" in keys:
             return self.get_message()
         if "photo" in keys:
@@ -126,9 +144,9 @@ class TelegramBot:
             as value.
 
         """
-        message = self.message_info["text"]
-        logger.info("Detected text message: %s", message)
-        return {"text": message}
+        message_info = self.message_info["text"]
+        logger.info("Detected text message: %s", message_info)
+        return {"text": message_info}
 
     def send_message(self, message: str) -> bool:
         """
@@ -160,7 +178,7 @@ class TelegramBot:
         Parameters:
             - download_path (str): Path to download file (if download_file
             flag is enabled)
-            - download_file (bool, optional): Wheter to download the
+            - download_file (bool, optional): Whether to download the
             file or not. Defaults to False.
 
         Returns:
