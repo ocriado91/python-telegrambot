@@ -3,11 +3,26 @@
 Unit Testing for TelegramBot
 """
 
+from datetime import datetime, timezone
 import os
 from unittest.mock import patch
+import pytest
 
 import telegrambot
 
+# Define an Unix Timestamp into the future (Friday, April 2, 3024 7:00:10 AM)
+# to mock the response of getUpdates request
+MOCK_FUTURE_DATE_UNIX_TIMESTAMP=33268950010
+
+@pytest.fixture
+def mock_now():
+    '''
+    Mock datetime.now time to improve test reliability
+    '''
+    with patch('datetime.datetime') as mock_datetime:
+        mock_datetime.now.return_value = datetime(2023, 4, 1,
+                                                  tzinfo=timezone.utc)
+        return mock_datetime.now.return_value
 
 def test_read_valid_config():
     """
@@ -44,7 +59,8 @@ def test_telegrambot_init():
     assert bot.url == "https://api.telegram.org/botTEST_API_KEY/"
 
 
-def test_telegrambot_check_new_message(requests_mock):
+@pytest.mark.usefixtures("mock_now")
+def test_telegrambot_check_new_message(requests_mock, mock_now):
     """
     Test check new message functionality
     """
@@ -55,16 +71,46 @@ def test_telegrambot_check_new_message(requests_mock):
 
     # Mocking /getUpdates post request
     mock_response = {
-        "result": [{"message": {"message_id": 80, "chat": {"id": 12345}}}]
+        "result": [
+            {"message": {"message_id": 80,
+                         "chat": {"id": 12345},
+                         "date": MOCK_FUTURE_DATE_UNIX_TIMESTAMP}}]
     }
     requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
 
     # Check successfully reception of incoming message according
     # with the mocking response of /getUpdates post request
-    assert bot.check_new_message()
+    assert bot.check_new_message(mock_now)
 
 
-def test_telegrambot_check_not_update(requests_mock):
+@pytest.mark.usefixtures("mock_now")
+def test_telegrambot_check_old_message(requests_mock, mock_now):
+    """
+    Test check new message functionality
+    """
+
+    # Initialize TelegramBot passing the testing configuration file
+    data = telegrambot.read_config_file("test/config.toml")
+    bot = telegrambot.TelegramBot(data)
+
+    # Mocking /getUpdates post request
+    mock_response = {
+        "result": [
+            {"message":
+                {"message_id": 80,
+                 "chat": {"id": 12345},
+                 "date": 0}}] # Use initial UTC time as message date
+    }
+    requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
+
+    # Check False returning due to the message returning
+    # by /getUpdates request is in the past
+
+    assert not bot.check_new_message(mock_now)
+
+
+@pytest.mark.usefixtures("mock_now")
+def test_telegrambot_check_not_update(requests_mock, mock_now):
     """
     Check no update detection.
     """
@@ -75,7 +121,8 @@ def test_telegrambot_check_not_update(requests_mock):
 
     mock_response = {}
     requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
-    assert not bot.check_new_message()
+
+    assert not bot.check_new_message(mock_now)
 
 def test_send_message(requests_mock):
     """
@@ -165,7 +212,8 @@ def test_send_video(requests_mock):
 
     assert bot.send_video("mock_video")
 
-def test_telegrambot_check_text_message(requests_mock):
+@pytest.mark.usefixtures("mock_now")
+def test_telegrambot_check_text_message(requests_mock, mock_now):
     """
     Test to check detection of text incoming message
     """
@@ -182,6 +230,7 @@ def test_telegrambot_check_text_message(requests_mock):
                     "message_id": 80,
                     "chat": {"id": 12345},
                     "text": "Hi",
+                    "date": MOCK_FUTURE_DATE_UNIX_TIMESTAMP
                 }
             }
         ]
@@ -189,7 +238,7 @@ def test_telegrambot_check_text_message(requests_mock):
     requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
 
     # Update message info
-    bot.check_new_message()
+    bot.check_new_message(mock_now)
 
     # Extract the message data
     result = bot.get_message()
@@ -198,7 +247,8 @@ def test_telegrambot_check_text_message(requests_mock):
     assert "text" in  result.keys()
     assert "Hi" in result["text"]
 
-def test_telegrambot_check_photo_message(requests_mock):
+@pytest.mark.usefixtures("mock_now")
+def test_telegrambot_check_photo_message(requests_mock, mock_now):
     """
     Test to check detection of photo incoming message
     """
@@ -220,6 +270,7 @@ def test_telegrambot_check_photo_message(requests_mock):
                     "chat": {"id": 12345},
                     "caption": expected_caption,
                     "photo": [{"file_id":  expected_file}],
+                    "date": MOCK_FUTURE_DATE_UNIX_TIMESTAMP
                 }
             }
         ]
@@ -227,7 +278,7 @@ def test_telegrambot_check_photo_message(requests_mock):
     requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
 
     # Update message info
-    bot.check_new_message()
+    bot.check_new_message(mock_now)
 
     # Extract the message data
     result = bot.get_file("photo")
@@ -237,7 +288,8 @@ def test_telegrambot_check_photo_message(requests_mock):
     assert expected_file == result["photo"][0]
     assert expected_caption == result["photo"][1]
 
-def test_telegrambot_check_audio_message(requests_mock):
+@pytest.mark.usefixtures("mock_now")
+def test_telegrambot_check_audio_message(requests_mock, mock_now):
     """
     Test to check detection of audio incoming message
     """
@@ -257,6 +309,7 @@ def test_telegrambot_check_audio_message(requests_mock):
                     "message_id": 80,
                     "chat": {"id": 12345},
                     "voice": {"file_id": expected_file},
+                    "date": MOCK_FUTURE_DATE_UNIX_TIMESTAMP
                 }
             }
         ]
@@ -264,7 +317,7 @@ def test_telegrambot_check_audio_message(requests_mock):
     requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
 
     # Update message info
-    bot.check_new_message()
+    bot.check_new_message(mock_now)
 
     # Extract message data
     result = bot.get_file("voice")
@@ -273,7 +326,8 @@ def test_telegrambot_check_audio_message(requests_mock):
     assert "voice" in result.keys()
     assert expected_file == result["voice"]
 
-def test_telegrambot_check_video_message(requests_mock):
+@pytest.mark.usefixtures("mock_now")
+def test_telegrambot_check_video_message(requests_mock, mock_now):
     """
     Test to check detection of video incoming message
     """
@@ -296,6 +350,7 @@ def test_telegrambot_check_video_message(requests_mock):
                     "chat": {"id": 12345},
                     "video": {"file_id": expected_file},
                     "caption": expected_caption,
+                    "date": MOCK_FUTURE_DATE_UNIX_TIMESTAMP
                 }
             }
         ]
@@ -303,7 +358,7 @@ def test_telegrambot_check_video_message(requests_mock):
     requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
 
     # Update message info
-    bot.check_new_message()
+    bot.check_new_message(mock_now)
 
     # Extract the message data
     result = bot.get_file("video")
@@ -313,7 +368,8 @@ def test_telegrambot_check_video_message(requests_mock):
     assert expected_file == result["video"][0]
     assert expected_caption == result["video"][1]
 
-def test_telegrambot_check_video_message_with_download(requests_mock):
+@pytest.mark.usefixtures("mock_now")
+def test_telegrambot_check_video_message_with_download(requests_mock, mock_now):
     """
     Test to check detection of video incoming message and
     try to download the file
@@ -342,6 +398,7 @@ def test_telegrambot_check_video_message_with_download(requests_mock):
                     "chat": {"id": 12345},
                     "video": {"file_id": expected_file},
                     "caption": expected_caption,
+                    "date": MOCK_FUTURE_DATE_UNIX_TIMESTAMP
                 }
             }
         ]
@@ -357,7 +414,7 @@ def test_telegrambot_check_video_message_with_download(requests_mock):
     requests_mock.post(f"{bot.url}getFile", json=get_file_mock_response)
 
     # Update message info
-    bot.check_new_message()
+    bot.check_new_message(mock_now)
 
     # Patch wget download process
     with patch("wget.download") as mock_download:
@@ -371,7 +428,9 @@ def test_telegrambot_check_video_message_with_download(requests_mock):
         assert expected_caption == result["video"][1]
         mock_download.assert_called_once()
 
-def test_telegrambot_check_video_message_with_download_error(requests_mock):
+@pytest.mark.usefixtures("mock_now")
+def test_telegrambot_check_video_message_with_download_error(requests_mock,
+                                                             mock_now):
     """
     Test to check detection of video incoming message and
     try to download the file with wrong download folder
@@ -395,6 +454,7 @@ def test_telegrambot_check_video_message_with_download_error(requests_mock):
                     "chat": {"id": 12345},
                     "video": {"file_id": expected_file},
                     "caption": expected_caption,
+                    "date": MOCK_FUTURE_DATE_UNIX_TIMESTAMP
                 }
             }
         ]
@@ -410,13 +470,14 @@ def test_telegrambot_check_video_message_with_download_error(requests_mock):
     requests_mock.post(f"{bot.url}getFile", json=get_file_mock_response)
 
     # Update message info
-    bot.check_new_message()
+    bot.check_new_message(mock_now)
 
     assert not  bot.get_file(label="video",
                              download_path="wrong_folder",
                              download_file=True)
 
-def test_telegrambot_check_message_type_text(requests_mock):
+@pytest.mark.usefixtures("mock_now")
+def test_telegrambot_check_message_type_text(requests_mock, mock_now):
     """
     Test to check detection of text incoming message
     """
@@ -433,6 +494,7 @@ def test_telegrambot_check_message_type_text(requests_mock):
                     "message_id": 80,
                     "chat": {"id": 12345},
                     "text": "Hi",
+                    "date": MOCK_FUTURE_DATE_UNIX_TIMESTAMP
                 }
             }
         ]
@@ -440,7 +502,7 @@ def test_telegrambot_check_message_type_text(requests_mock):
     requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
 
     # Update message info
-    bot.check_new_message()
+    bot.check_new_message(mock_now)
 
     # Extract the message data
     result = bot.check_message_type()
@@ -449,7 +511,8 @@ def test_telegrambot_check_message_type_text(requests_mock):
     assert "text" in  result.keys()
     assert "Hi" in result["text"]
 
-def test_telegrambot_check_message_type_photo(requests_mock):
+@pytest.mark.usefixtures("mock_now")
+def test_telegrambot_check_message_type_photo(requests_mock, mock_now):
     """
     Test to check detection of photo incoming message
     """
@@ -471,6 +534,7 @@ def test_telegrambot_check_message_type_photo(requests_mock):
                     "chat": {"id": 12345},
                     "caption": expected_caption,
                     "photo": [{"file_id":  expected_file}],
+                    "date": MOCK_FUTURE_DATE_UNIX_TIMESTAMP
                 }
             }
         ]
@@ -478,7 +542,7 @@ def test_telegrambot_check_message_type_photo(requests_mock):
     requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
 
     # Update message info
-    bot.check_new_message()
+    bot.check_new_message(mock_now)
 
     # Extract the message data
     result = bot.check_message_type()
@@ -488,7 +552,8 @@ def test_telegrambot_check_message_type_photo(requests_mock):
     assert expected_file == result["photo"][0]
     assert expected_caption == result["photo"][1]
 
-def test_telegrambot_check_message_type_audio(requests_mock):
+@pytest.mark.usefixtures("mock_now")
+def test_telegrambot_check_message_type_audio(requests_mock, mock_now):
     """
     Test to check detection of audio incoming message
     """
@@ -508,6 +573,7 @@ def test_telegrambot_check_message_type_audio(requests_mock):
                     "message_id": 80,
                     "chat": {"id": 12345},
                     "voice": {"file_id": expected_file},
+                    "date": MOCK_FUTURE_DATE_UNIX_TIMESTAMP
                 }
             }
         ]
@@ -515,7 +581,7 @@ def test_telegrambot_check_message_type_audio(requests_mock):
     requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
 
     # Update message info
-    bot.check_new_message()
+    bot.check_new_message(mock_now)
 
     # Extract message data
     result = bot.check_message_type()
@@ -524,7 +590,8 @@ def test_telegrambot_check_message_type_audio(requests_mock):
     assert "voice" in result.keys()
     assert expected_file == result["voice"]
 
-def test_telegrambot_check_message_type_video(requests_mock):
+@pytest.mark.usefixtures("mock_now")
+def test_telegrambot_check_message_type_video(requests_mock, mock_now):
     """
     Test to check detection of video incoming message
     """
@@ -547,6 +614,7 @@ def test_telegrambot_check_message_type_video(requests_mock):
                     "chat": {"id": 12345},
                     "video": {"file_id": expected_file},
                     "caption": expected_caption,
+                    "date": MOCK_FUTURE_DATE_UNIX_TIMESTAMP
                 }
             }
         ]
@@ -554,7 +622,7 @@ def test_telegrambot_check_message_type_video(requests_mock):
     requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
 
     # Update message info
-    bot.check_new_message()
+    bot.check_new_message(mock_now)
 
     # Extract the message data
     result = bot.check_message_type()
@@ -564,7 +632,8 @@ def test_telegrambot_check_message_type_video(requests_mock):
     assert expected_file == result["video"][0]
     assert expected_caption == result["video"][1]
 
-def test_telegrambot_check_message_type_none(requests_mock):
+@pytest.mark.usefixtures("mock_now")
+def test_telegrambot_check_message_type_none(requests_mock, mock_now):
     """
     Test to check detection of invalid format
     """
@@ -582,6 +651,7 @@ def test_telegrambot_check_message_type_none(requests_mock):
                     "message_id": 80,
                     "chat": {"id": 12345},
                     "other": {"file_id": "other_file"},
+                    "date": MOCK_FUTURE_DATE_UNIX_TIMESTAMP
                 }
             }
         ]
@@ -589,7 +659,7 @@ def test_telegrambot_check_message_type_none(requests_mock):
     requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
 
     # Update message info
-    bot.check_new_message()
+    bot.check_new_message(mock_now)
 
     # Extract the message data
     result = bot.check_message_type()
