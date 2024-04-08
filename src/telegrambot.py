@@ -75,12 +75,24 @@ class TelegramBot:
         """
 
         method_url = self.url + "getUpdates"
-        data = requests.post(method_url, timeout=10, data={"offset": -1}).json()
-        if "result" not in data.keys():
+        response = requests.post(method_url,
+                                 timeout=10,
+                                 data={"offset": -1}).json()
+        logger.debug("Incoming data: %s", response)
+
+        # Check "ok" field into response
+        if not response["ok"]:
             return False
 
-        self.chat_id = data["result"][-1]["message"]["chat"]["id"]
-        self.message_info = data["result"][-1]["message"]
+        # The updates are stored 24 hours into Telegram Bot API server. If there
+        # aren't any updates stored into this server, the API returns a
+        # {"ok":true,"result":[]} JSON response. To check if result list is
+        # to check this point.
+        if not response["result"]:
+            return False
+
+        self.chat_id = response["result"][-1]["message"]["chat"]["id"]
+        self.message_info = response["result"][-1]["message"]
 
         # Extract message datetime and compare against reference time to
         # detect old messages
