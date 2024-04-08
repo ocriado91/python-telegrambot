@@ -71,6 +71,7 @@ def test_telegrambot_check_new_message(requests_mock, mock_now):
 
     # Mocking /getUpdates post request
     mock_response = {
+        "ok": True,
         "result": [
             {"message": {"message_id": 80,
                          "chat": {"id": 12345},
@@ -95,6 +96,7 @@ def test_telegrambot_check_old_message(requests_mock, mock_now):
 
     # Mocking /getUpdates post request
     mock_response = {
+        "ok": True,
         "result": [
             {"message":
                 {"message_id": 80,
@@ -110,6 +112,21 @@ def test_telegrambot_check_old_message(requests_mock, mock_now):
 
 
 @pytest.mark.usefixtures("mock_now")
+def test_telegrambot_check_error_update(requests_mock, mock_now):
+    """
+    Check no update detection.
+    """
+
+    # Initialize TelegramBot passing the testing configuration file
+    data = telegrambot.read_config_file("test/config.toml")
+    bot = telegrambot.TelegramBot(data)
+
+    mock_response = {"ok":False,"result":[]}
+    requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
+
+    assert not bot.check_new_message(mock_now)
+
+@pytest.mark.usefixtures("mock_now")
 def test_telegrambot_check_not_update(requests_mock, mock_now):
     """
     Check no update detection.
@@ -119,7 +136,7 @@ def test_telegrambot_check_not_update(requests_mock, mock_now):
     data = telegrambot.read_config_file("test/config.toml")
     bot = telegrambot.TelegramBot(data)
 
-    mock_response = {}
+    mock_response = {"ok":True,"result":[]}
     requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
 
     assert not bot.check_new_message(mock_now)
@@ -224,6 +241,7 @@ def test_telegrambot_check_text_message(requests_mock, mock_now):
 
     # Define the custom mock response of /getUpdates post request
     mock_response = {
+        "ok": True,
         "result": [
             {
                 "message": {
@@ -263,6 +281,7 @@ def test_telegrambot_check_photo_message(requests_mock, mock_now):
 
     # Mocking response of /getUpdates post request with expected values
     mock_response = {
+        "ok": True,
         "result": [
             {
                 "message": {
@@ -303,6 +322,7 @@ def test_telegrambot_check_audio_message(requests_mock, mock_now):
 
     # Mocking response of /getUpdates post request with expected values
     mock_response = {
+        "ok": True,
         "result": [
             {
                 "message": {
@@ -343,6 +363,7 @@ def test_telegrambot_check_video_message(requests_mock, mock_now):
     # Mocking response of /getUpdates post request with
     # expected values previously defined
     mock_response = {
+        "ok": True,
         "result": [
             {
                 "message": {
@@ -391,6 +412,7 @@ def test_telegrambot_check_video_message_with_download(requests_mock, mock_now):
     # Mocking response of /getUpdates post request with
     # expected values previously defined
     mock_response = {
+        "ok": True,
         "result": [
             {
                 "message": {
@@ -447,6 +469,7 @@ def test_telegrambot_check_video_message_with_download_error(requests_mock,
     # Mocking response of /getUpdates post request with
     # expected values previously defined
     mock_response = {
+        "ok": True,
         "result": [
             {
                 "message": {
@@ -488,6 +511,7 @@ def test_telegrambot_check_message_type_text(requests_mock, mock_now):
 
     # Define the custom mock response of /getUpdates post request
     mock_response = {
+        "ok": True,
         "result": [
             {
                 "message": {
@@ -527,6 +551,7 @@ def test_telegrambot_check_message_type_photo(requests_mock, mock_now):
 
     # Mocking response of /getUpdates post request with expected values
     mock_response = {
+        "ok": True,
         "result": [
             {
                 "message": {
@@ -567,6 +592,7 @@ def test_telegrambot_check_message_type_audio(requests_mock, mock_now):
 
     # Mocking response of /getUpdates post request with expected values
     mock_response = {
+        "ok": True,
         "result": [
             {
                 "message": {
@@ -607,6 +633,7 @@ def test_telegrambot_check_message_type_video(requests_mock, mock_now):
     # Mocking response of /getUpdates post request with
     # expected values previously defined
     mock_response = {
+        "ok": True,
         "result": [
             {
                 "message": {
@@ -645,6 +672,7 @@ def test_telegrambot_check_message_type_none(requests_mock, mock_now):
     # Mocking response of /getUpdates post request with
     # expected values previously defined
     mock_response = {
+        "ok": True,
         "result": [
             {
                 "message": {
