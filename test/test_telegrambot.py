@@ -500,6 +500,43 @@ def test_telegrambot_check_video_message_with_download_error(requests_mock,
                              download_file=True)
 
 @pytest.mark.usefixtures("mock_now")
+def test_telegrambot_check_message_type_document(requests_mock, mock_now):
+    """
+    Test to check detection of document incoming message
+    """
+
+    # Initialize TelegramBot passing the testing configuration file
+    data = telegrambot.read_config_file("test/config.toml")
+    bot = telegrambot.TelegramBot(data)
+
+    # Define expected values
+    expected_file = "document.csv"
+
+    # Mocking response of /getUpdates post request with
+    # expected values previously defined
+    mock_response = {
+        "ok": True,
+        "result": [
+            {
+                "message": {
+                    "message_id": 80,
+                    "chat": {"id": 12345},
+                    "document": {"file_id": expected_file},
+                    "date": MOCK_FUTURE_DATE_UNIX_TIMESTAMP
+                }
+            }
+        ]
+    }
+    requests_mock.post(f"{bot.url}getUpdates", json=mock_response)
+
+    # Update message info
+    bot.check_new_message(mock_now)
+
+    result = bot.check_message_type()
+    assert "document" in result.keys()
+    assert result["document"] == expected_file
+
+@pytest.mark.usefixtures("mock_now")
 def test_telegrambot_check_message_type_text(requests_mock, mock_now):
     """
     Test to check detection of text incoming message
@@ -720,10 +757,10 @@ def test_telegrambot_get_file(requests_mock):
 
     # Patch wget download process
     with patch("wget.download") as mock_download:
-        result = bot._download_file(file_id=1234)
+        result = bot.download_file(file_id=1234)
 
         # Check the properly call to wget download function
-        # and the correct result of _download_file bot method
+        # and the correct result of download_file bot method
         mock_download.assert_called_once()
         assert result
 
@@ -736,11 +773,11 @@ def test_telegrambot_get_file_wrong_folder():
     data = telegrambot.read_config_file("test/config.toml")
     bot = telegrambot.TelegramBot(data)
 
-    # This folder doesn't exist, so the _download_file method
+    # This folder doesn't exist, so the download_file method
     # detects this point and return a False flag
     target_folder = "wrong_download_folder/"
 
-    assert not bot._download_file(file_id=1234,
+    assert not bot.download_file(file_id=1234,
                                   download_path=target_folder)
 
 def test_telegrambot_get_file_no_ok_response(requests_mock):
@@ -764,6 +801,6 @@ def test_telegrambot_get_file_no_ok_response(requests_mock):
     }
     requests_mock.post(f"{bot.url}getFile", json=mock_response)
 
-    assert not bot._download_file(file_id=1234,
+    assert not bot.download_file(file_id=1234,
                                   download_path=target_folder)
 

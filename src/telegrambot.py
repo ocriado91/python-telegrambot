@@ -144,6 +144,8 @@ class TelegramBot:
             return self.get_file(label="voice")
         if "video" in keys:
             return self.get_file(label="video")
+        if "document" in keys:
+            return self.get_file(label="document")
         logger.error("None accepted type detected")
         return None
 
@@ -214,7 +216,7 @@ class TelegramBot:
         # Whether if selected, try to download file into
         # configured folder
         if download_file:
-            download_flag = self._download_file(file_id, download_path)
+            download_flag = self.download_file(file_id, download_path)
             if not download_flag:
                 return {}
 
@@ -291,7 +293,7 @@ class TelegramBot:
 
         return response["ok"]
 
-    def _download_file(
+    def download_file(
         self, file_id: str, download_path: str = "download/"
     ) -> bool:
         """
