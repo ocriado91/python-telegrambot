@@ -75,9 +75,18 @@ class TelegramBot:
         """
 
         method_url = self.url + "getUpdates"
-        response = requests.post(method_url,
-                                 timeout=10,
-                                 data={"offset": -1}).json()
+
+        # This function is called in first place to retrieve incoming updates.
+        # If there is any error into POST requests, catch the exception and
+        # return False to avoid the rest of the app try to launch new requests.
+        try:
+            response = requests.post(method_url,
+                                    timeout=10,
+                                    data={"offset": -1}).json()
+        except requests.exceptions.ConnectionError:
+            logger.error("Reached max. number of attempts!")
+            return False
+
         logger.debug("Incoming data: %s", response)
 
         # Check "ok" field into response

@@ -6,6 +6,7 @@ Unit Testing for TelegramBot
 from datetime import datetime, timezone
 import os
 from unittest.mock import patch
+import requests
 import pytest
 
 import telegrambot
@@ -82,6 +83,28 @@ def test_telegrambot_check_new_message(requests_mock, mock_now):
     # Check successfully reception of incoming message according
     # with the mocking response of /getUpdates post request
     assert bot.check_new_message(mock_now)
+
+
+@pytest.mark.usefixtures("mock_now")
+def test_telegrambot_check_new_message_error(mock_now):
+    """
+    Test check new message functionality when a POST requests
+    raises a requests Connection Error
+    """
+
+    # With requests-mock plugin, it is required to pass a URL and response
+    # to mock object. For check successful requests' ConnectionError handling,
+    # its better to define a new mocker object and pass the exception as
+    # side_effect
+    with patch("requests.post") as mock_post:
+        mock_post.side_effect = requests.exceptions.ConnectionError()
+
+        # Initialize TelegramBot passing the testing configuration file
+        data = telegrambot.read_config_file("test/config.toml")
+        bot = telegrambot.TelegramBot(data)
+
+        # Return false according with
+        assert not bot.check_new_message(mock_now)
 
 
 @pytest.mark.usefixtures("mock_now")
