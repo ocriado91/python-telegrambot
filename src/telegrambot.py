@@ -86,6 +86,9 @@ class TelegramBot:
         except requests.exceptions.ConnectionError:
             logger.error("Reached max. number of attempts!")
             return False
+        except requests.exceptions.Timeout:
+            logger.error("Timeout reached. Trying again...")
+            return False
 
         logger.debug("Incoming data: %s", response)
 

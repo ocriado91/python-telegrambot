@@ -86,7 +86,7 @@ def test_telegrambot_check_new_message(requests_mock, mock_now):
 
 
 @pytest.mark.usefixtures("mock_now")
-def test_telegrambot_check_new_message_error(mock_now):
+def test_reached_max_connections(mock_now):
     """
     Test check new message functionality when a POST requests
     raises a requests Connection Error
@@ -103,7 +103,28 @@ def test_telegrambot_check_new_message_error(mock_now):
         data = telegrambot.read_config_file("test/config.toml")
         bot = telegrambot.TelegramBot(data)
 
-        # Return false according with
+        # Return false according to exception handling.
+        assert not bot.check_new_message(mock_now)
+
+@pytest.mark.usefixtures("mock_now")
+def test_connection_timeout_error(mock_now):
+    """
+    Test check new message functionality when a POST requests
+    raises a timeout exception.
+    """
+
+    # With requests-mock plugin, it is required to pass a URL and response
+    # to mock object. To check successful requests' TimeOutError handling,
+    # it's better to define a new mocker object and pass the exception as
+    # side_effect
+    with patch("requests.post") as mock_post:
+        mock_post.side_effect = requests.exceptions.ConnectTimeout()
+
+        # Initialize TelegramBot passing the testing configuration file
+        data = telegrambot.read_config_file("test/config.toml")
+        bot = telegrambot.TelegramBot(data)
+
+        # Return false according with exception handle
         assert not bot.check_new_message(mock_now)
 
 
